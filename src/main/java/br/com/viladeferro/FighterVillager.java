@@ -32,10 +32,27 @@ import javax.annotation.Nullable;
 import java.util.EnumSet;
 
 public class FighterVillager extends Villager implements net.minecraft.world.entity.monster.RangedAttackMob {
+    private Tier tier = Tier.NATURAL;
     private int bowCooldown;
     private int meleeCooldown;
 
     public FighterVillager(EntityType<? extends Villager> type, Level level) { super(type, level); }
+
+    public Tier getTier() { return tier; }
+
+    public void setTier(Tier tier) { this.tier = tier; }
+
+    @Override
+    public void addAdditionalSaveData(net.minecraft.nbt.CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        tag.putString("VilaTier", tier.name());
+    }
+
+    @Override
+    public void readAdditionalSaveData(net.minecraft.nbt.CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        for (Tier t : Tier.values()) if (t.name().equals(tag.getString("VilaTier"))) tier = t;
+    }
 
     public static AttributeSupplier.Builder createFighterAttributes() {
         return Villager.createAttributes()
@@ -69,14 +86,16 @@ public class FighterVillager extends Villager implements net.minecraft.world.ent
         goalSelector.addGoal(7, new RandomLookAroundGoal(this));
         targetSelector.addGoal(1, new HurtByTargetGoal(this));
         targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Monster.class, 10, true, false, e -> !VilaDeFerro.isNeverTarget(e)));
+        // Guerreiros invocados pelo Chefe caçam jogadores
+        targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Player.class, 10, true, false, e -> tier == Tier.AGGRESSIVE));
     }
 
     /** Nunca mira em aliados da vila nem em creepers. */
     @Override
     public void setTarget(@Nullable LivingEntity target) {
         if (target != null && VilaDeFerro.isNeverTarget(target)) return;
-        // Guerreiros comuns nunca atacam jogadores, nem quando levam dano. Só o Chefe pode revidar.
-        if (target instanceof Player && !(this instanceof ChiefVillager)) return;
+        // Guerreiros invocados pelo Filhote nunca atacam jogadores, nem quando levam dano.
+        if (target instanceof Player && tier == Tier.PASSIVE) return;
         super.setTarget(target);
     }
 

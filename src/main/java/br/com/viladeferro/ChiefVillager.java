@@ -16,7 +16,9 @@ import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.animal.IronGolem;
 import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
@@ -102,8 +104,26 @@ public class ChiefVillager extends FighterVillager {
             double angle = (Math.PI * 2 * i / Math.max(1, amount)) + random.nextDouble() * 0.4;
             ally.moveTo(getX() + Math.cos(angle) * 2.5, getY(), getZ() + Math.sin(angle) * 2.5, random.nextFloat() * 360, 0);
             ally.finalizeSpawn(serverLevel, serverLevel.getCurrentDifficultyAt(ally.blockPosition()), MobSpawnType.EVENT, null, null);
+            ally.setTier(Tier.AGGRESSIVE);
             ally.setTarget(target);
             serverLevel.addFreshEntity(ally);
+        }
+
+        long golems = serverLevel.getEntitiesOfClass(IronGolem.class, getBoundingBox().inflate(24),
+                g -> Tier.of(g) == Tier.AGGRESSIVE).size();
+        if (golems < 2) {
+            IronGolem golem = EntityType.IRON_GOLEM.create(serverLevel);
+            if (golem != null) {
+                double angle = random.nextDouble() * Math.PI * 2;
+                golem.moveTo(getX() + Math.cos(angle) * 3.0, getY(), getZ() + Math.sin(angle) * 3.0, random.nextFloat() * 360, 0);
+                Tier.set(golem, Tier.AGGRESSIVE);
+                golem.setTarget(target);
+                if (target instanceof Player) {
+                    golem.setPersistentAngerTarget(target.getUUID());
+                    golem.startPersistentAngerTimer();
+                }
+                serverLevel.addFreshEntity(golem);
+            }
         }
     }
 

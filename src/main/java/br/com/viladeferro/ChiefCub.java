@@ -22,6 +22,14 @@ import net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal;
 import net.minecraft.world.entity.animal.IronGolem;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.DifficultyInstance;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.SpawnGroupData;
+import net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.core.particles.ParticleTypes;
@@ -40,6 +48,7 @@ public class ChiefCub extends TamableAnimal {
     private static final int DROP_INTERVAL = 6000; // 5 minutos
     private int summonCooldown = 100;
     private int dropTimer;
+    private boolean geared;
 
     public ChiefCub(EntityType<? extends TamableAnimal> type, Level level) {
         super(type, level);
@@ -56,11 +65,12 @@ public class ChiefCub extends TamableAnimal {
     @Override
     protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
-        goalSelector.addGoal(1, new MeleeAttackGoal(this, 1.2D, true));
-        goalSelector.addGoal(2, new FollowOwnerGoal(this, 1.1D, 8.0F, 2.0F, false));
-        goalSelector.addGoal(3, new WaterAvoidingRandomStrollGoal(this, 0.8D));
-        goalSelector.addGoal(4, new LookAtPlayerGoal(this, Player.class, 8.0F));
-        goalSelector.addGoal(5, new RandomLookAroundGoal(this));
+        goalSelector.addGoal(1, new SitWhenOrderedToGoal(this));
+        goalSelector.addGoal(2, new MeleeAttackGoal(this, 1.2D, true));
+        goalSelector.addGoal(3, new FollowOwnerGoal(this, 1.1D, 8.0F, 2.0F, false));
+        goalSelector.addGoal(4, new WaterAvoidingRandomStrollGoal(this, 0.8D));
+        goalSelector.addGoal(5, new LookAtPlayerGoal(this, Player.class, 8.0F));
+        goalSelector.addGoal(6, new RandomLookAroundGoal(this));
         targetSelector.addGoal(1, new OwnerHurtByTargetGoal(this));
         targetSelector.addGoal(2, new OwnerHurtTargetGoal(this));
         targetSelector.addGoal(3, new HurtByTargetGoal(this).setAlertOthers());
@@ -68,6 +78,7 @@ public class ChiefCub extends TamableAnimal {
 
     /** Começa como filhote; cresce sozinho depois de alguns minutos. */
     public void becomeBaby() {
+        equipGear();
         setAge(-GROW_TICKS);
         applyStage(true);
     }
@@ -81,13 +92,81 @@ public class ChiefCub extends TamableAnimal {
     private void applyStage(boolean heal) {
         boolean baby = isBaby();
         getAttribute(Attributes.MAX_HEALTH).setBaseValue(baby ? 20.0D : 60.0D);
-        getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(baby ? 3.0D : 8.0D);
+        getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(baby ? 1.0D : 4.0D);
         if (heal) setHealth(getMaxHealth());
+    }
+
+    // ---------- Sentar (como lobo domado) ----------
+
+    @Override
+    public InteractionResult mobInteract(Player player, InteractionHand hand) {
+        if (isOwnedBy(player) && hand == InteractionHand.MAIN_HAND) {
+            if (!level().isClientSide) {
+                setOrderedToSit(!isOrderedToSit());
+                jumping = false;
+                navigation.stop();
+                setTarget(null);
+            }
+            return InteractionResult.sidedSuccess(level().isClientSide);
+        }
+        return super.mobInteract(player, hand);
+    }
+
+    // ---------- Equipamento ----------
+
+    @Override
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, MobSpawnType reason,
+                                        @Nullable SpawnGroupData data, @Nullable CompoundTag tag) {
+        SpawnGroupData result = super.finalizeSpawn(level, difficulty, reason, data, tag);
+        equipGear();
+        return result;
+    }
+
+    public void equipGear() {
+        if (geared) return;
+        geared = true;
+
+        ItemStack helmet = protect(new ItemStack(Items.NETHERITE_HELMET));
+        helmet.enchant(Enchantments.RESPIRATION, 3);
+        helmet.enchant(Enchantments.AQUA_AFFINITY, 1);
+        ItemStack chest = protect(new ItemStack(Items.NETHERITE_CHESTPLATE));
+        ItemStack legs = protect(new ItemStack(Items.NETHERITE_LEGGINGS));
+        legs.enchant(Enchantments.SWIFT_SNEAK, 3);
+        ItemStack boots = protect(new ItemStack(Items.NETHERITE_BOOTS));
+        boots.enchant(Enchantments.FALL_PROTECTION, 4);
+        boots.enchant(Enchantments.DEPTH_STRIDER, 3);
+
+        ItemStack axe = new ItemStack(Items.NETHERITE_AXE);
+        axe.enchant(Enchantments.SHARPNESS, 5);
+        axe.enchant(Enchantments.FIRE_ASPECT, 2);
+        axe.enchant(Enchantments.MOB_LOOTING, 3);
+        axe.enchant(Enchantments.BLOCK_EFFICIENCY, 5);
+        axe.enchant(Enchantments.UNBREAKING, 3);
+        axe.enchant(Enchantments.MENDING, 1);
+
+        setItemSlot(EquipmentSlot.HEAD, helmet);
+        setItemSlot(EquipmentSlot.CHEST, chest);
+        setItemSlot(EquipmentSlot.LEGS, legs);
+        setItemSlot(EquipmentSlot.FEET, boots);
+        setItemSlot(EquipmentSlot.MAINHAND, axe);
+        setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.TOTEM_OF_UNDYING));
+        for (EquipmentSlot slot : EquipmentSlot.values()) setDropChance(slot, 0.0F);
+    }
+
+    private static ItemStack protect(ItemStack stack) {
+        stack.enchant(Enchantments.ALL_DAMAGE_PROTECTION, 4);
+        stack.enchant(Enchantments.FIRE_PROTECTION, 4);
+        stack.enchant(Enchantments.BLAST_PROTECTION, 4);
+        stack.enchant(Enchantments.PROJECTILE_PROTECTION, 4);
+        stack.enchant(Enchantments.UNBREAKING, 3);
+        stack.enchant(Enchantments.MENDING, 1);
+        return stack;
     }
 
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
+        tag.putBoolean("Geared", geared);
         tag.putInt("DropTimer", dropTimer);
     }
 
@@ -95,6 +174,7 @@ public class ChiefCub extends TamableAnimal {
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         dropTimer = tag.getInt("DropTimer");
+        geared = tag.getBoolean("Geared");
         applyStage(false);
     }
 
@@ -130,6 +210,7 @@ public class ChiefCub extends TamableAnimal {
             dropTimer = 0;
             dropGift(serverLevel);
         }
+        if (isOrderedToSit()) return;
         LivingEntity target = getTarget();
         if (target == null || !target.isAlive()) return;
         if (--summonCooldown > 0) return;
@@ -149,6 +230,7 @@ public class ChiefCub extends TamableAnimal {
             if (ally == null) continue;
             place(ally, i, newWarriors);
             ally.finalizeSpawn(serverLevel, serverLevel.getCurrentDifficultyAt(ally.blockPosition()), MobSpawnType.EVENT, null, null);
+            ally.setTier(Tier.PASSIVE);
             ally.setTarget(target);
             serverLevel.addFreshEntity(ally);
         }
@@ -156,6 +238,7 @@ public class ChiefCub extends TamableAnimal {
             IronGolem golem = net.minecraft.world.entity.EntityType.IRON_GOLEM.create(serverLevel);
             if (golem != null) {
                 golem.setPlayerCreated(true);
+                Tier.set(golem, Tier.PASSIVE);
                 place(golem, 0, 1);
                 golem.setTarget(target);
                 serverLevel.addFreshEntity(golem);

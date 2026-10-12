@@ -70,11 +70,6 @@ public class VilaDeFerro {
         return e instanceof FighterVillager || e instanceof ChiefCub;
     }
 
-    /** Guerreiros comuns e golems de ferro: nunca atacam jogadores nem o filhote. */
-    public static boolean isPeaceful(Entity e) {
-        return e instanceof IronGolem || (e instanceof FighterVillager && !(e instanceof ChiefVillager));
-    }
-
     /** Alvos que nenhum membro da vila pode atacar. */
     public static boolean isNeverTarget(Entity e) {
         return isFriend(e) || e instanceof Creeper;
@@ -88,15 +83,13 @@ public class VilaDeFerro {
             if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
             var victim = event.getEntity();
             if (victim.level().isClientSide || isNeverTarget(attacker)) return;
-            // Bater num guerreiro comum não provoca ninguém; só atacar o Chefe provoca o próprio Chefe
-            if (attacker instanceof Player && !(victim instanceof ChiefVillager)) return;
             // ChiefVillager estende FighterVillager, então este loop cobre os dois tipos
             for (var ally : victim.level().getEntitiesOfClass(FighterVillager.class, victim.getBoundingBox().inflate(24))) {
                 if (ally != victim && ally.getTarget() == null) ally.setTarget(attacker);
             }
         }
 
-        /** Impede fogo amigável e ataques de guerreiros/golems contra jogadores e o filhote. */
+        /** Impede fogo amigável, ataques ao filhote e ataques de seres passivos a jogadores. */
         @SubscribeEvent
         public static void onAttack(LivingAttackEvent event) {
             Entity source = event.getSource().getEntity();
@@ -104,17 +97,22 @@ public class VilaDeFerro {
             Entity victim = event.getEntity();
             if (isFriend(source) && isFriend(victim)) {
                 event.setCanceled(true);
-            } else if (isPeaceful(source) && (victim instanceof Player || victim instanceof ChiefCub)) {
+            } else if ((source instanceof IronGolem || source instanceof FighterVillager) && victim instanceof ChiefCub) {
+                event.setCanceled(true);
+            } else if (Tier.of(source) == Tier.PASSIVE && victim instanceof Player) {
                 event.setCanceled(true);
             }
         }
 
-        /** Guerreiros comuns e golems de ferro nunca escolhem o jogador ou o filhote como alvo. */
+        /** Golems nunca miram aliados da vila; os passivos (do filhote) também nunca miram jogadores. */
         @SubscribeEvent
         public static void onChangeTarget(LivingChangeTargetEvent event) {
             LivingEntity target = event.getNewTarget();
             if (target == null) return;
-            if (isPeaceful(event.getEntity()) && (target instanceof Player || target instanceof ChiefCub || isFriend(target))) {
+            LivingEntity self = event.getEntity();
+            if (self instanceof IronGolem && isFriend(target)) {
+                event.setCanceled(true);
+            } else if (Tier.of(self) == Tier.PASSIVE && target instanceof Player) {
                 event.setCanceled(true);
             }
         }
