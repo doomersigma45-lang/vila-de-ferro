@@ -5,7 +5,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.animal.IronGolem;
 import net.minecraft.world.entity.monster.Creeper;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.common.ForgeSpawnEggItem;
@@ -13,6 +15,7 @@ import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
+import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -67,6 +70,11 @@ public class VilaDeFerro {
         return e instanceof FighterVillager || e instanceof ChiefCub;
     }
 
+    /** Guerreiros comuns e golems de ferro: nunca atacam jogadores nem o filhote. */
+    public static boolean isPeaceful(Entity e) {
+        return e instanceof IronGolem || (e instanceof FighterVillager && !(e instanceof ChiefVillager));
+    }
+
     /** Alvos que nenhum membro da vila pode atacar. */
     public static boolean isNeverTarget(Entity e) {
         return isFriend(e) || e instanceof Creeper;
@@ -80,17 +88,33 @@ public class VilaDeFerro {
             if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
             var victim = event.getEntity();
             if (victim.level().isClientSide || isNeverTarget(attacker)) return;
+            // Bater num guerreiro comum não provoca ninguém; só atacar o Chefe provoca o próprio Chefe
+            if (attacker instanceof Player && !(victim instanceof ChiefVillager)) return;
             // ChiefVillager estende FighterVillager, então este loop cobre os dois tipos
             for (var ally : victim.level().getEntitiesOfClass(FighterVillager.class, victim.getBoundingBox().inflate(24))) {
                 if (ally != victim && ally.getTarget() == null) ally.setTarget(attacker);
             }
         }
 
-        /** Impede fogo amigável (inclusive flechas) entre guerreiros, chefe e filhote. */
+        /** Impede fogo amigável e ataques de guerreiros/golems contra jogadores e o filhote. */
         @SubscribeEvent
         public static void onAttack(LivingAttackEvent event) {
             Entity source = event.getSource().getEntity();
-            if (source != null && isFriend(source) && isFriend(event.getEntity())) {
+            if (source == null) return;
+            Entity victim = event.getEntity();
+            if (isFriend(source) && isFriend(victim)) {
+                event.setCanceled(true);
+            } else if (isPeaceful(source) && (victim instanceof Player || victim instanceof ChiefCub)) {
+                event.setCanceled(true);
+            }
+        }
+
+        /** Guerreiros comuns e golems de ferro nunca escolhem o jogador ou o filhote como alvo. */
+        @SubscribeEvent
+        public static void onChangeTarget(LivingChangeTargetEvent event) {
+            LivingEntity target = event.getNewTarget();
+            if (target == null) return;
+            if (isPeaceful(event.getEntity()) && (target instanceof Player || target instanceof ChiefCub || isFriend(target))) {
                 event.setCanceled(true);
             }
         }

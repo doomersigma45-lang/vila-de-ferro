@@ -24,7 +24,10 @@ import net.minecraft.world.entity.animal.IronGolem;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
 
 import javax.annotation.Nullable;
 
@@ -34,7 +37,9 @@ import javax.annotation.Nullable;
  */
 public class ChiefCub extends TamableAnimal {
     private static final int GROW_TICKS = 12000; // 10 minutos
+    private static final int DROP_INTERVAL = 6000; // 5 minutos
     private int summonCooldown = 100;
+    private int dropTimer;
 
     public ChiefCub(EntityType<? extends TamableAnimal> type, Level level) {
         super(type, level);
@@ -81,8 +86,15 @@ public class ChiefCub extends TamableAnimal {
     }
 
     @Override
+    public void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        tag.putInt("DropTimer", dropTimer);
+    }
+
+    @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
+        dropTimer = tag.getInt("DropTimer");
         applyStage(false);
     }
 
@@ -114,6 +126,10 @@ public class ChiefCub extends TamableAnimal {
     public void tick() {
         super.tick();
         if (level().isClientSide || !(level() instanceof ServerLevel serverLevel)) return;
+        if (++dropTimer >= DROP_INTERVAL) {
+            dropTimer = 0;
+            dropGift(serverLevel);
+        }
         LivingEntity target = getTarget();
         if (target == null || !target.isAlive()) return;
         if (--summonCooldown > 0) return;
@@ -145,6 +161,23 @@ public class ChiefCub extends TamableAnimal {
                 serverLevel.addFreshEntity(golem);
             }
         }
+    }
+
+    /** A cada 5 minutos deixa 1 ou 2 itens bons para o dono. */
+    private void dropGift(ServerLevel serverLevel) {
+        int count = 1 + random.nextInt(2);
+        for (int i = 0; i < count; i++) {
+            int roll = random.nextInt(100);
+            ItemStack gift;
+            if (roll < 30) gift = new ItemStack(Items.GOLDEN_APPLE, 1 + random.nextInt(2));
+            else if (roll < 55) gift = new ItemStack(Items.DIAMOND, 1 + random.nextInt(3));
+            else if (roll < 75) gift = EnchantmentHelper.enchantItem(random, new ItemStack(Items.BOOK), 15 + random.nextInt(16), true);
+            else if (roll < 90) gift = new ItemStack(Items.DIAMOND_BLOCK);
+            else if (roll < 97) gift = new ItemStack(Items.EXPERIENCE_BOTTLE, 4 + random.nextInt(5));
+            else gift = new ItemStack(Items.ENCHANTED_GOLDEN_APPLE);
+            spawnAtLocation(gift);
+        }
+        serverLevel.sendParticles(ParticleTypes.HAPPY_VILLAGER, getX(), getY() + 1.0D, getZ(), 8, 0.4D, 0.5D, 0.4D, 0.0D);
     }
 
     private void place(Mob mob, int index, int total) {

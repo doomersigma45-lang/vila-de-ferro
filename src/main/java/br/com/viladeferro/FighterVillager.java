@@ -75,6 +75,8 @@ public class FighterVillager extends Villager implements net.minecraft.world.ent
     @Override
     public void setTarget(@Nullable LivingEntity target) {
         if (target != null && VilaDeFerro.isNeverTarget(target)) return;
+        // Guerreiros comuns nunca atacam jogadores, nem quando levam dano. Só o Chefe pode revidar.
+        if (target instanceof Player && !(this instanceof ChiefVillager)) return;
         super.setTarget(target);
     }
 
