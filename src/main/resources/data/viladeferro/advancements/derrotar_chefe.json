@@ -1,0 +1,16 @@
+{
+  "parent": "minecraft:adventure/root",
+  "display": {
+    "icon": { "item": "minecraft:diamond_chestplate" },
+    "title": { "translate": "advancement.viladeferro.derrotar_chefe.title" },
+    "description": { "translate": "advancement.viladeferro.derrotar_chefe.description" },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "derrotado": { "trigger": "minecraft:impossible" }
+  },
+  "requirements": [ [ "derrotado" ] ]
+}

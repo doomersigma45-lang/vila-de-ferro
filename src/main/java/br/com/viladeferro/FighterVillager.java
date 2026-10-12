@@ -68,7 +68,14 @@ public class FighterVillager extends Villager implements net.minecraft.world.ent
         goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 8));
         goalSelector.addGoal(7, new RandomLookAroundGoal(this));
         targetSelector.addGoal(1, new HurtByTargetGoal(this));
-        targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Monster.class, true));
+        targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Monster.class, 10, true, false, e -> !VilaDeFerro.isNeverTarget(e)));
+    }
+
+    /** Nunca mira em aliados da vila nem em creepers. */
+    @Override
+    public void setTarget(@Nullable LivingEntity target) {
+        if (target != null && VilaDeFerro.isNeverTarget(target)) return;
+        super.setTarget(target);
     }
 
     @Override

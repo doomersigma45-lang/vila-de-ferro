@@ -2,5 +2,8 @@
   "entity.viladeferro.guerreiro_villager": "Villager Guerreiro",
   "entity.viladeferro.chefe_villager": "Chefe Villager",
   "item.viladeferro.guerreiro_villager_spawn_egg": "Ovo de Villager Guerreiro",
-  "item.viladeferro.chefe_villager_spawn_egg": "Ovo de Chefe Villager"
+  "item.viladeferro.chefe_villager_spawn_egg": "Ovo de Chefe Villager",
+  "entity.viladeferro.filhote_chefe_villager": "Filhote de Chefe Villager",
+  "advancement.viladeferro.derrotar_chefe.title": "Fim do Chefe da Vila",
+  "advancement.viladeferro.derrotar_chefe.description": "Derrote o Chefe Villager e ganhe a lealdade do seu filhote"
 }

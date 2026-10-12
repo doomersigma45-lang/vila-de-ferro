@@ -13,6 +13,7 @@ public final class ClientEvents {
     @SubscribeEvent
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(VilaDeFerro.FIGHTER.get(), VillagerRenderer::new);
-        event.registerEntityRenderer(VilaDeFerro.CHIEF.get(), VillagerRenderer::new);
+        event.registerEntityRenderer(VilaDeFerro.CHIEF.get(), ChiefRenderer::new);
+        event.registerEntityRenderer(VilaDeFerro.CHIEF_CUB.get(), ChiefRenderer::new);
     }
 }

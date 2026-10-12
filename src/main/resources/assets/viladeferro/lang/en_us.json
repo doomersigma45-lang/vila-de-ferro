@@ -2,5 +2,8 @@
   "entity.viladeferro.guerreiro_villager": "Warrior Villager",
   "entity.viladeferro.chefe_villager": "Villager Chief",
   "item.viladeferro.guerreiro_villager_spawn_egg": "Warrior Villager Spawn Egg",
-  "item.viladeferro.chefe_villager_spawn_egg": "Villager Chief Spawn Egg"
+  "item.viladeferro.chefe_villager_spawn_egg": "Villager Chief Spawn Egg",
+  "entity.viladeferro.filhote_chefe_villager": "Villager Chief Cub",
+  "advancement.viladeferro.derrotar_chefe.title": "End of the Village Chief",
+  "advancement.viladeferro.derrotar_chefe.description": "Defeat the Villager Chief and earn the loyalty of its cub"
 }
